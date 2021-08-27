@@ -104,7 +104,7 @@ export class Dapp extends React.Component {
         </div>
 
         <hr />
-        <Gallery URIs={this.state.tokenURIs}/>
+        <Gallery URIs={this.state.tokenURIs} provider={this._provider} contract={this._token} />
       </div>
     );
   }
