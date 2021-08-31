@@ -90,7 +90,7 @@ export function Gallery({URIs, provider, contract}) {
                     <div className="d-flex align-items-center justify-content-between rounded-pill bg-light px-3 py-2 mt-4">
                       {signerAddress === itemInfo.owner && ethers.constants.AddressZero === itemInfo.approved? 
                         <button className="btn btn-light" onClick={(e) => onApprove(e, i)}>Approve for sale</button> : 
-                        <button className="btn btn-light" disabled>Approved for Sale</button> 
+                        signerAddress === itemInfo.owner ? <button className="btn btn-light" disabled>Approved for Sale</button> : ''
                       }
                       {
                         itemInfo.owner === signerAddress 
