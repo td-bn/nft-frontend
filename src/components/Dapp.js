@@ -17,7 +17,7 @@ import { WaitingForTransactionMessage } from "./WaitingForTransactionMessage";
 import { NoTokensMessage } from "./NoTokensMessage";
 import { Gallery } from "./Gallery";
 
-const NETWORK_ID = '80001';
+const NETWORK_ID = '4';
 
 const ERROR_CODE_TX_REJECTED_BY_USER = 4001;
 
