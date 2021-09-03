@@ -1,13 +1,11 @@
 import React from "react";
 
 import { ethers } from "ethers";
+import identicon from 'identicon';
+import {create} from 'ipfs-http-client';
+import crypto from 'crypto';
 
-import NFT from "../contracts/AnimalNFT.json";
 import contractAddress from "../contracts/contract-address.json";
-
-// All the logic of this dapp is contained in the Dapp component.
-// These other components are just presentational ones: they don't have any
-// logic. They just render HTML.
 import { NoWalletDetected } from "./NoWalletDetected";
 import { ConnectWallet } from "./ConnectWallet";
 import { Loading } from "./Loading";
@@ -16,21 +14,15 @@ import { TransactionErrorMessage } from "./TransactionErrorMessage";
 import { WaitingForTransactionMessage } from "./WaitingForTransactionMessage";
 import { NoTokensMessage } from "./NoTokensMessage";
 import { Gallery } from "./Gallery";
+import { mnemonicToEntropy } from "ethers/lib/utils";
+import NFT from "../contracts/INFT.json";
 
+const client = create({ host: 'ipfs.infura.io', port: 5001, protocol: 'https' })
 const NETWORK_ID = '4';
+// const NETWORK_ID = '31337';
 
 const ERROR_CODE_TX_REJECTED_BY_USER = 4001;
 
-// This component is in charge of doing these things:
-//   1. It connects to the user's wallet
-//   2. Initializes ethers and the Token contract
-//   3. Polls the user balance to keep it updated.
-//   4. Transfers tokens by sending transactions
-//   5. Renders the whole application
-//
-// Note that (3) and (4) are specific of this sample application, but they show
-// you how to keep your Dapp and contract's state in sync,  and how to send a
-// transaction.
 export class Dapp extends React.Component {
   constructor(props) {
     super(props);
@@ -47,10 +39,46 @@ export class Dapp extends React.Component {
       txBeingSent: undefined,
       transactionError: undefined,
       networkError: undefined,
-      tokenURIs: undefined
+      tokenURIs: [],
+      loading: false,
     };
 
     this.state = this.initialState;
+  }
+
+  async mintToken(e) {
+    console.log('Minting')
+    this.setState({loading: true})
+
+    const id = crypto.randomBytes(20).toString('hex')
+    const buffer = identicon.generateSync({ id: id , size: 400 })
+
+    const data = buffer.replace(/^data:image\/\w+;base64,/, "")
+    const buf = Buffer.from(data, 'base64');
+
+    const img = await client.add(buf, { cidVersion: 1})
+    const imgCID = img.cid.toString()
+
+    const metaData = {
+      name: id,
+      description: 'Randomly generated identicon',
+      image: `ipfs://${imgCID}`,
+      imageGateway: `https://ipfs.io/ipfs/${imgCID}`
+    }
+
+    const meta = await client.add(JSON.stringify(metaData), { cidVersion: 1})
+    const metaCID = meta.cid.toString()
+    
+    console.log(this._signer)
+    const signerAddress = await this._signer.getAddress()
+    try {
+      const tx = await this._token.mint(signerAddress, metaCID)
+      const res = await tx.wait()
+      this.setState({tokenURIs: [...this.state.tokenURIs, metaCID]})
+    } catch (error) {
+      console.error(error)
+    }
+    this.setState({loading: false})
   }
 
   render() {
@@ -68,7 +96,7 @@ export class Dapp extends React.Component {
       );
     }
 
-    if (!this.state.tokenData) {
+    if (!this.state.tokenData || this.state.loading) {
       return <Loading />;
     }
 
@@ -80,11 +108,15 @@ export class Dapp extends React.Component {
             <h1>
               {this.state.tokenData.name} ({this.state.tokenData.symbol})
             </h1>
-            <p>
-              Welcome <b>{this.state.selectedAddress}</b>
-            </p>
+            <div className="clearfix">
+              <p className="float-left">Welcome <b>{this.state.selectedAddress}</b></p>
+              <button className="btn btn-primary float-right" onClick={(e) => this.mintToken(e)}>Mint</button>
+            </div>
+           
           </div>
         </div>
+
+        <div id="generated"></div>
 
         <hr />
         <Gallery URIs={this.state.tokenURIs} provider={this._provider} contract={this._token} />
@@ -136,13 +168,14 @@ export class Dapp extends React.Component {
   async _intializeEthers() {
     // We first initialize ethers by creating a provider using window.ethereum
     this._provider = new ethers.providers.Web3Provider(window.ethereum);
+    this._signer = this._provider.getSigner(0)
 
     // When, we initialize the contract using that provider and the token's
     // artifact. 
     this._token = new ethers.Contract(
       contractAddress.AnimalNFT,
       NFT.abi,
-      this._provider.getSigner(0)
+      this._signer
     );
   }
 
@@ -199,7 +232,7 @@ export class Dapp extends React.Component {
     }
 
     this.setState({ 
-      networkError: 'Please connect Metamask to Rinkeby testnet'
+      networkError: 'Please connect Metamask to correct network'
     });
 
     return false;

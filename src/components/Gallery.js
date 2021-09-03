@@ -13,9 +13,10 @@ export function Gallery({URIs, provider, contract}) {
 
   useEffect(() => {
     const init = async () => {
+      console.log('Using effect')
       const tokenInfo = []
       for (const i in URIs) {
-        const URI = URIs[i]
+        const URI = `https://ipfs.io/ipfs/${URIs[i]}`
         let {data} = await axios.get(URI)
         const owner = await contract.ownerOf(i)
         const approved = await contract.getApproved(i)
@@ -24,8 +25,10 @@ export function Gallery({URIs, provider, contract}) {
         tokenInfo.push(data)
       }
       setTokenInfo(tokenInfo)
-      setSigner(await provider.getSigner(0))
-      setSignerAddress(signer.getAddress ? await signer.getAddress() : '')
+      const signer = await provider.getSigner(0)
+      const signerAddress = signer.getAddress ? await signer.getAddress() : ''
+      setSigner(signer)
+      setSignerAddress(signerAddress)
     }
     init()    
   }, [URIs, loading])
@@ -83,9 +86,9 @@ export function Gallery({URIs, provider, contract}) {
                 margin: "4%"
               }}>
                 <p>Owner <small style={{fontSize: 12}}>{itemInfo.owner}</small></p>
-                <div className="bg-white rounded shadow-sm"><img src={itemInfo.image} alt="" className="img-fluid card-img-top" />
+                <div className="bg-white rounded shadow-sm"><img src={itemInfo.imageGateway} alt="" className="img-fluid card-img-top" />
                   <div className="p-4">
-                    <h5>{itemInfo.name}</h5>
+                    <h5><small style={{fontSize: 14}}>{itemInfo.name}</small></h5>
                     <p className="small text-muted mb-0">{itemInfo.description}</p>
                     <div className="d-flex align-items-center justify-content-between rounded-pill bg-light px-3 py-2 mt-4">
                       {signerAddress === itemInfo.owner && ethers.constants.AddressZero === itemInfo.approved? 
